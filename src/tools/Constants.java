@@ -4,7 +4,7 @@ public class Constants {
 
 	static public String brokerIp = "localhost";
 	static public int brokerPort = 6543;
-	
+
 	static public String vendorIp = "localhost";
 	static public int vendorPort = 6555;
 

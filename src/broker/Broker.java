@@ -9,9 +9,9 @@ import java.net.Socket;
 import java.util.Calendar;
 import java.util.Date;
 
-import rsa.RSA;
 import tools.Certificate;
 import tools.Constants;
+import tools.RSA;
 import tools.SHA;
 
 class Broker {
@@ -19,29 +19,33 @@ class Broker {
 	static private RSA myKeys = new RSA(Constants.RSAsize);
 	private static ServerSocket welcomeSocket;
 
-	static void acceptClient(Socket connectionSocket) throws Exception {
+	static void acceptRequest(Socket connectionSocket) throws Exception {
 		String clientIdentity, request, e;
 		DataInputStream inFromClient = new DataInputStream(new BufferedInputStream(connectionSocket.getInputStream()));
 		ObjectOutputStream outToClient = new ObjectOutputStream(connectionSocket.getOutputStream());
 
-		request=inFromClient.readUTF();
-		
+		request = inFromClient.readUTF();
+
 		System.out.println(request);
-		
+
 		if (request.trim().equals("new_customer"))
-			acceptCustomer(connectionSocket, inFromClient, outToClient);
-		
-		if (request.trim().equals("pk")){
-			System.out.println("PK");
-			String pk = myKeys.getN().toString();
-			outToClient.writeObject(pk);
+			acceptClient(connectionSocket, inFromClient, outToClient);
+
+		if (request.trim().equals("pk")) {
+			outToClient.writeObject(brokerIdentity);
+			outToClient.flush();
+			outToClient.writeObject(myKeys.getN().toString());
+			outToClient.flush();
+			outToClient.writeObject(myKeys.getE().toString());
 			outToClient.flush();
 		}
-		
 
+		inFromClient.close();
+		outToClient.close();
+		connectionSocket.close();
 	}
 
-	static void acceptCustomer(Socket connectionSocket, DataInputStream inFromClient, ObjectOutputStream outToClient)
+	static void acceptClient(Socket connectionSocket, DataInputStream inFromClient, ObjectOutputStream outToClient)
 			throws Exception {
 		String clientIdentity, n, e;
 
@@ -63,7 +67,6 @@ class Broker {
 		outToClient.writeObject(CU);
 		RSA clientKeys = new RSA(new BigInteger(n), new BigInteger(e));
 		String sh = clientKeys.encrypt(SHA.sha1(CU.concatAll()));
-		System.out.println(sh);
 		outToClient.writeObject(sh);
 	}
 
@@ -73,7 +76,7 @@ class Broker {
 
 		while (true) {
 			Socket connectionSocket = welcomeSocket.accept();
-			acceptClient(connectionSocket);
+			acceptRequest(connectionSocket);
 		}
 	}
 }
